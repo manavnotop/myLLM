@@ -1,7 +1,22 @@
 [project]
 name = "myllm"
 version = "0.1.0"
-description = "Add your description here"
+description = "Self-hosted LLM deployment with vLLM on Modal - Qwen3-4B optimized for 900+ TPS"
 readme = "README.md"
-requires-python = ">=3.13"
-dependencies = []
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "vllm>=0.6.6",
+    "modal>=0.70",
+    "transformers>=4.47.1",
+    "torch>=2.5.1",
+    "httpx>=0.28.0",
+    "rich>=14.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.setuptools.packages.find]
+where = ["src"]

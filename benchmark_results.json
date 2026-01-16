@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-01-16T19:26:28.507246",
+  "cold_start_ms": 0.0,
+  "total_requests": 50,
+  "successful_requests": 50,
+  "failed_requests": 0,
+  "success_rate_percent": 100.0,
+  "total_tokens": 11619,
+  "avg_tokens_per_request": 232.38,
+  "total_time_seconds": 34.43034033314325,
+  "tps": 337.4639892483243,
+  "avg_latency_ms": 6267.758505032398,
+  "p50_latency_ms": 6769.805499934591,
+  "p99_latency_ms": 8557.643458014354,
+  "requests_per_second": 1.4522075447470708
+}

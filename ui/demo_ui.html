@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qwen3-4B vLLM Demo</title>
+    <style>
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --border-color: #333333;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --text-muted: #666666;
+            --accent: #ffffff;
+            --accent-hover: #e0e0e0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .model-badge {
+            display: inline-block;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+        }
+
+        .model-badge a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .model-badge a:hover {
+            color: var(--text-primary);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .card:hover {
+            border-color: #444444;
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .prompt-area {
+            width: 100%;
+            min-height: 150px;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.2s ease;
+        }
+
+        .prompt-area:focus {
+            outline: none;
+            border-color: #666666;
+        }
+
+        .prompt-area::placeholder {
+            color: var(--text-muted);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            border-color: #666666;
+        }
+
+        .btn-secondary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .output-area {
+            width: 100%;
+            min-height: 200px;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .output-area:empty::before {
+            content: "Generated text will appear here...";
+            color: var(--text-muted);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .stat-card {
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .config-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .config-section h3 {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .config-row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .config-item {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .config-item label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.4rem;
+        }
+
+        .config-item input {
+            width: 100%;
+            padding: 0.6rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .config-item input:focus {
+            outline: none;
+            border-color: #666666;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0, 0, 0, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--bg-primary);
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .benchmark-progress {
+            display: none;
+            margin-top: 1rem;
+        }
+
+        .benchmark-progress.active {
+            display: block;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .footer a:hover {
+            color: var(--text-primary);
+        }
+
+        .error {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            color: #ff6b6b;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .success {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            color: #00ff88;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Qwen3-4B vLLM Demo</h1>
+            <p class="subtitle">High-performance inference powered by vLLM on Modal</p>
+            <div class="model-badge">
+                <a href="https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507" target="_blank">
+                    Qwen/Qwen3-4B-Instruct-2507
+                </a>
+            </div>
+        </header>
+
+        <div class="grid">
+            <!-- Input Section -->
+            <div class="card">
+                <h2>Input</h2>
+                <textarea
+                    id="prompt"
+                    class="prompt-area"
+                    placeholder="Enter your prompt here...
+
+Example prompts:
+- Explain quantum computing in simple terms
+- Write a Python function to sort a list
+- What are the key differences between AI and AGI?"
+                ></textarea>
+
+                <div class="config-section">
+                    <h3>Generation Settings</h3>
+                    <div class="config-row">
+                        <div class="config-item">
+                            <label for="maxTokens">Max Tokens</label>
+                            <input type="number" id="maxTokens" value="512" min="1" max="8192">
+                        </div>
+                        <div class="config-item">
+                            <label for="temperature">Temperature</label>
+                            <input type="number" id="temperature" value="0.7" min="0" max="2" step="0.1">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="button-row">
+                    <button id="generateBtn" class="btn btn-primary">
+                        Generate
+                    </button>
+                    <button id="benchmarkBtn" class="btn btn-secondary">
+                        Run Benchmark
+                    </button>
+                </div>
+
+                <div id="benchmarkProgress" class="benchmark-progress">
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+                    <p id="progressText" class="progress-text">Running benchmark...</p>
+                </div>
+            </div>
+
+            <!-- Output Section -->
+            <div class="card">
+                <h2>Output</h2>
+                <div id="output" class="output-area"></div>
+
+                <div class="config-section">
+                    <h3>Stats Dashboard</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div id="tpsStat" class="stat-value">--</div>
+                            <div class="stat-label">TPS</div>
+                        </div>
+                        <div class="stat-card">
+                            <div id="latencyStat" class="stat-value">--</div>
+                            <div class="stat-label">Latency</div>
+                        </div>
+                        <div class="stat-card">
+                            <div id="tokensStat" class="stat-value">--</div>
+                            <div class="stat-label">Tokens</div>
+                        </div>
+                        <div class="stat-card">
+                            <div id="gpuStat" class="stat-value">A100</div>
+                            <div class="stat-label">GPU</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration -->
+        <div class="card" style="margin-top: 2rem;">
+            <h2>Configuration</h2>
+            <div class="config-row">
+                <div class="config-item">
+                    <label for="endpoint">Modal Endpoint URL</label>
+                    <input
+                        type="text"
+                        id="endpoint"
+                        placeholder="https://your-app.modal.run/generate"
+                        value=""
+                    >
+                </div>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem;">
+                Tip: Set the endpoint URL above or in localStorage
+            </p>
+        </div>
+
+        <footer class="footer">
+            <p>Powered by <a href="https://vllm.ai" target="_blank">vLLM</a> + <a href="https://modal.com" target="_blank">Modal</a></p>
+            <p style="margin-top: 0.5rem; color: var(--text-muted);">Deploy Qwen3-4B with optimized FP8 quantization for 900+ TPS</p>
+        </footer>
+    </div>
+
+    <script>
+        // Configuration
+        let endpoint = localStorage.getItem('modalEndpoint') || '';
+
+        // DOM Elements
+        const promptEl = document.getElementById('prompt');
+        const outputEl = document.getElementById('output');
+        const generateBtn = document.getElementById('generateBtn');
+        const benchmarkBtn = document.getElementById('benchmarkBtn');
+        const endpointEl = document.getElementById('endpoint');
+        const benchmarkProgress = document.getElementById('benchmarkProgress');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+
+        // Stats elements
+        const tpsStat = document.getElementById('tpsStat');
+        const latencyStat = document.getElementById('latencyStat');
+        const tokensStat = document.getElementById('tokensStat');
+
+        // Initialize endpoint from localStorage
+        if (endpoint) {
+            endpointEl.value = endpoint;
+        }
+
+        // Save endpoint on change
+        endpointEl.addEventListener('change', () => {
+            endpoint = endpointEl.value.trim();
+            localStorage.setItem('modalEndpoint', endpoint);
+        });
+
+        // Generate button click
+        generateBtn.addEventListener('click', async () => {
+            const prompt = promptEl.value.trim();
+            if (!prompt) {
+                alert('Please enter a prompt');
+                return;
+            }
+
+            if (!endpoint) {
+                alert('Please set the Modal endpoint URL');
+                endpointEl.focus();
+                return;
+            }
+
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<span class="loading"></span> Generating...';
+            outputEl.textContent = '';
+
+            const maxTokens = parseInt(document.getElementById('maxTokens').value) || 512;
+            const temperature = parseFloat(document.getElementById('temperature').value) || 0.7;
+
+            const startTime = performance.now();
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        max_tokens: maxTokens,
+                        temperature: temperature,
+                    }),
+                });
+
+                const data = await response.json();
+                const latency = performance.now() - startTime;
+
+                outputEl.textContent = data.text || 'Error: No output';
+
+                // Update stats
+                const tokens = data.generated_tokens || 0;
+                const tps = (tokens / (latency / 1000)).toFixed(0);
+
+                tpsStat.textContent = tps;
+                latencyStat.textContent = latency.toFixed(0);
+                tokensStat.textContent = tokens;
+
+            } catch (error) {
+                outputEl.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                console.error('Generation error:', error);
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = 'Generate';
+            }
+        });
+
+        // Benchmark button click
+        benchmarkBtn.addEventListener('click', async () => {
+            if (!endpoint) {
+                alert('Please set the Modal endpoint URL');
+                endpointEl.focus();
+                return;
+            }
+
+            const numRequests = 100;
+            const prompts = [
+                'Explain quantum computing in simple terms.',
+                'Write a Python function to sort a list.',
+                'What are the key differences between AI and AGI?',
+                'Describe the process of photosynthesis.',
+                'Write a haiku about coding.',
+            ];
+
+            benchmarkBtn.disabled = true;
+            benchmarkProgress.classList.add('active');
+            outputEl.textContent = 'Running benchmark...\n';
+            progressFill.style.width = '0%';
+            progressText.textContent = '0 / 100 requests completed';
+
+            let completed = 0;
+            let totalTokens = 0;
+            let totalLatency = 0;
+            let errors = 0;
+
+            const maxTokens = parseInt(document.getElementById('maxTokens').value) || 512;
+
+            const startTime = performance.now();
+
+            // Run requests in batches of 10
+            for (let i = 0; i < numRequests; i += 10) {
+                const batch = [];
+                for (let j = 0; j < 10 && i + j < numRequests; j++) {
+                    batch.push(fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            prompt: prompts[(i + j) % prompts.length],
+                            max_tokens: maxTokens,
+                            temperature: 0.7,
+                        }),
+                    }));
+                }
+
+                const results = await Promise.allSettled(batch);
+
+                for (const result of results) {
+                    completed++;
+                    if (result.status === 'fulfilled') {
+                        try {
+                            const data = await result.value.json();
+                            totalTokens += data.generated_tokens || 0;
+                        } catch (e) {
+                            errors++;
+                        }
+                    } else {
+                        errors++;
+                    }
+                }
+
+                const percent = Math.round((completed / numRequests) * 100);
+                progressFill.style.width = `${percent}%`;
+                progressText.textContent = `${completed} / ${numRequests} requests completed`;
+            }
+
+            const totalTime = (performance.now() - startTime) / 1000;
+            const tps = (totalTokens / totalTime).toFixed(0);
+            const avgLatency = (totalTime * 1000 / numRequests).toFixed(0);
+
+            outputEl.textContent = `Benchmark Complete!\n\n` +
+                `Requests: ${numRequests}\n` +
+                `Total Tokens: ${totalTokens}\n` +
+                `Total Time: ${totalTime.toFixed(2)}s\n` +
+                `TPS: ${tps}\n` +
+                `Avg Latency: ${avgLatency}ms\n` +
+                `Errors: ${errors}`;
+
+            tpsStat.textContent = tps;
+            latencyStat.textContent = avgLatency;
+            tokensStat.textContent = totalTokens.toLocaleString();
+
+            benchmarkProgress.classList.remove('active');
+            benchmarkBtn.disabled = false;
+        });
+
+        // Example prompts
+        promptEl.addEventListener('focus', () => {
+            if (!promptEl.value) {
+                promptEl.value = 'Explain quantum computing in simple terms.';
+            }
+        });
+    </script>
+</body>
+</html>
