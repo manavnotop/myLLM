@@ -1,4 +1,4 @@
-# Qwen3-4B vLLM Inference Service
+# Qwen3-4B vLLM Inference
 
 Self-hosted LLM deployment demonstrating production inference infrastructure on Modal.
 
